@@ -1,4 +1,4 @@
-import {Board} from "./Pages/board.tsx";
+import Board from "./Pages/board.tsx";
 import {BrowserRouter, Routes, Route} from 'react-router-dom';
 export const App = () => {
   return (

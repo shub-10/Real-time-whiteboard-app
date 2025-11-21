@@ -22,9 +22,10 @@ io.on('connection', (socket)=>{
 
   socket.on("join-board", (boardId)=>{
     socket.join(boardId);
+    // console.log(boardId)
     console.log(`user ${socket.id} joined board: ${boardId}`)
   });
-  socket.on("draw", data=>{
+  socket.on("draw", (data) => {
     socket.to(data.boardId).emit("draw", data);
   });
 
