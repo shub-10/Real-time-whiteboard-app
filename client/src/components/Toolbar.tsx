@@ -18,7 +18,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ tool, setTool }) => {
     <div
       style={{
         position: "fixed",
-        left: 20,
+        right: 20,
         top: 100,
         background: "#1e1e1e",
         padding: "10px",
