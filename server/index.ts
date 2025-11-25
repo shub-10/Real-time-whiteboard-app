@@ -25,6 +25,10 @@ io.on('connection', (socket)=>{
     // console.log(boardId)
     console.log(`user ${socket.id} joined board: ${boardId}`)
   });
+  socket.on("text", (data) => {
+    socket.to(data.boardId).emit("text", data);
+  });
+
   socket.on("draw", (data) => {
     socket.to(data.boardId).emit("draw", data);
   });
