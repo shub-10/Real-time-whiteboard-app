@@ -1,19 +1,24 @@
 import { useRef, useEffect, useState } from "react";
 import { socket } from "../socket";
 import Toolbar from "./Toolbar";
+import { MdFormatColorFill } from "react-icons/md";
+
 interface CanvasProps {
   boardId: string;
 }
 const presetColors = [
-  "#000000", "#4d4d4d", "#999999", "#e60000", "#ff1a1a",
-  "#e65c00", "#ff9900", "#33cc33", "#009933", "#0066cc",
-  "#3399ff", "#7a00cc", "#b366ff", "#ffffff", "#cccccc"
+  "#000000", "#ffffff", "#e60000",
+  "#e65c00", "#ff9900", "#009933", "#0066cc",
+  "#3399ff", "#7a00cc",
 ];
 
 const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-
+  const [isTyping, setIsTyping] = useState(false);
+  const [textPos, setTextPos] = useState<{ x: number; y: number } | null>(null);
+  const [textValue, setTextValue] = useState("");
+  const [canvasColor, setCanvasColor] = useState("white");
   const [color, setColor] = useState<string>("black");
   const [tool, setTool] = useState("brush");
 
@@ -37,8 +42,14 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     ctx.lineJoin = "round";
     ctx.lineWidth = 3;
     ctx.strokeStyle = "black";
-
     ctxRef.current = ctx;
+    socket.on("text", (data) => {
+      const ctx = ctxRef.current;
+      if (!ctx) return;
+      ctx.font = "20px sans-serif";
+      ctx.fillStyle = data.color;
+      ctx.fillText(data.text, data.x, data.y);
+    });
 
     socket.on("draw", ({ x1, y1, x2, y2, color, thickness }) => {
       drawLine(x1, y1, x2, y2, color, thickness);
@@ -49,6 +60,21 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
       });
     };
   }, []);
+
+  useEffect(() => {
+    const ctx = ctxRef.current;
+    const canvas = canvasRef.current;
+
+    if (!canvas) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    if (!ctx) return;
+    ctx.fillStyle = canvasColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  }, [canvasColor])
 
   // Start drawing
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -69,10 +95,10 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     const ctx = ctxRef.current;
 
     // Apply tool settings
-    let strokeColor = tool === "eraser" ? "white" : color;
+    let strokeColor = tool === "eraser" ? canvasColor : color;
     let strokeWidth = tool === "eraser" ? 50 : 3;
-    if(tool === "highlighter"){
-      strokeColor = color+"40";
+    if (tool === "highlighter") {
+      strokeColor = color + "40";
       strokeWidth = 20;
     }
     ctx.strokeStyle = strokeColor;
@@ -131,60 +157,90 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   useEffect(() => {
     if (ctxRef.current) ctxRef.current.strokeStyle = color;
   }, [color]);
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (tool !== "text") return;
+
+    setIsTyping(true);
+    setTextValue("");
+    setTextPos({ x: e.clientX, y: e.clientY });
+  };
+  const finishTyping = () => {
+    if (!isTyping || !ctxRef.current || !textPos) return;
+
+    const ctx = ctxRef.current;
+    ctx.font = "20px sans-serif";
+    ctx.fillStyle = color;
+    ctx.fillText(textValue, textPos.x, textPos.y);
+
+    // Emit to server
+    socket.emit("text", {
+      boardId,
+      x: textPos.x,
+      y: textPos.y,
+      text: textValue,
+      color,
+    });
+
+    setIsTyping(false);
+    setTextValue("");
+    setTool("brush");
+  };
+  const handleCanvasColor = () => {
+    if (canvasColor === "white") {
+      setCanvasColor("#393838ff");
+    }
+    else setCanvasColor("white");
+  }
 
   return (
     <div>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-            flexWrap: "wrap",
-            padding: "7px",
-            background: "#605e5eff",
-            borderRadius: "10px",
-            position: "fixed",
-            top: 20,
-            left: 20,
-            zIndex: 20
-          }}
-        >
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-20 flex flex-row items-center gap-3">
+        {/* COLOR PALETTE */}
+        <div className="flex flex-row flex-wrap gap-2 p-2 bg-[#605e5e] rounded-md">
           {presetColors.map((c) => (
             <div
               key={c}
               onClick={() => setColor(c)}
+              className="w-5 h-5 cursor-pointer rounded-sm"
               style={{
-                width: "20px",
-                height: "20px",
-                borderRadius: "50%",
                 background: c,
-                border: color === c ? "3px solid #87cefa" : "2px solid #555",
+                border: color === c ? "3px solid grey" : "2px solid #555",
                 boxShadow: color === c ? "0 0 8px #87cefa" : "none",
-                cursor: "pointer"
               }}
             />
           ))}
-
-          {/* Add your own color button */}
-          <label
-            style={{
-              width: "24px",
-              height: "24px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, red, yellow, green, cyan, blue, magenta)",
-              cursor: "pointer",
-              border: "2px solid #fff"
-            }}
-          >
-            <input
-              type="color"
-              onChange={(e) => setColor(e.target.value)}
-              style={{ display: "none" }}
-            />
-          </label>
         </div>
-       <div> <Toolbar tool={tool} setTool={setTool}></Toolbar></div>
-    
+
+        {/* ICON */}
+        <MdFormatColorFill
+          onClick={handleCanvasColor}
+          className="w-8 h-8 cursor-pointer bg-gray-300 rounded-sm p-[2px]"
+        />
+      </div>
+
+      <div>
+        <Toolbar tool={tool} setTool={setTool}></Toolbar>
+      </div>
+
+      {isTyping && textPos && (
+        <textarea
+          autoFocus
+          value={textValue}
+          onChange={(e) => setTextValue(e.target.value)}
+          onBlur={() => finishTyping()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") finishTyping();
+          }}
+          className="absolutep-[6px]rounded-[4px]outline outline-[2px] outline-[#4aa3ff] bg-white
+        text-[20px] z-[2000]"
+          style={{
+            top: textPos.y,
+            left: textPos.x,
+            color: color
+          }}
+        />
+      )}
+
       <canvas
         ref={canvasRef}
         onMouseDown={startDrawing}
@@ -192,6 +248,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
         onMouseOut={stopDrawing}
         onMouseMove={draw}
         style={{ background: "white" }}
+        onClick={handleCanvasClick}
       />
     </div>
   );
