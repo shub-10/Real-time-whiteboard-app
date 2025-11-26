@@ -1,7 +1,28 @@
+import {useState} from 'react';
+import { useNavigate } from 'react-router-dom';
+import {generateBoardId} from '../utils/boardId.tsx';
 const Home = () => {
+  const navigate = useNavigate();
+  const [joinCode, setJoinCode] = useState("");
+
+
+  const handleNewBoard: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+    e.preventDefault();
+    const id =  generateBoardId();
+    console.log(id);
+    navigate(`/board/${id}`);
+  };
+  const handleJoin: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+    e.preventDefault();
+    const code = joinCode.trim();
+    if(!code) return;
+    const boardId = code.includes('/board/') ? code.split('/board/')[1].split('/')[0] : code;
+    console.log(boardId);
+    navigate(`/board/${boardId}`);
+  }
   return (
     <div className="w-full h-screen flex flex-col justify-center items-center px-4">
-      
+
       {/* Main Title */}
       <h1 className="text-4xl md:text-5xl font-semibold text-gray-800 text-center">
         Collaborate and create together
@@ -16,20 +37,24 @@ const Home = () => {
       <div className="flex flex-col md:flex-row items-center gap-4 mt-8">
 
         {/* New Board Button */}
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow-lg transition">
+
+        <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full text-lg shadow-lg transition" onClick={handleNewBoard}>
           New board
         </button>
+
 
         {/* Join Input */}
         <div className="flex items-center bg-white shadow-md rounded-full px-4 py-2 border border-gray-200 w-full md:w-auto">
           <input
             className="outline-none px-2 py-1 flex-1"
             placeholder="Enter a code or link"
+            value = {joinCode}
+            onChange= {(e)=> setJoinCode(e.target.value)}
           />
         </div>
 
         {/* Join Button */}
-        <button className="text-blue-600 font-medium text-lg hover:underline">
+        <button className="text-blue-600 font-medium text-lg hover:underline" onClick={handleJoin}>
           Join
         </button>
       </div>
@@ -39,9 +64,9 @@ const Home = () => {
 
       {/* Illustration */}
       <div className="mt-10">
-        <img 
-          src="../assets/illustration.jpg" 
-          alt="illustration" 
+        <img
+          src="../assets/illustration.jpg"
+          alt="illustration"
           className="w-60 opacity-80"
         />
       </div>
