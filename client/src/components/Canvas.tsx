@@ -2,7 +2,8 @@ import { useRef, useEffect, useState } from "react";
 import { socket } from "../socket";
 import Toolbar from "./Toolbar";
 import { MdFormatColorFill } from "react-icons/md";
-
+import { MdContentCopy } from "react-icons/md";
+import toast from 'react-hot-toast';
 interface CanvasProps {
   boardId: string;
 }
@@ -54,6 +55,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     socket.on("draw", ({ x1, y1, x2, y2, color, thickness }) => {
       drawLine(x1, y1, x2, y2, color, thickness);
     });
+    socket.on("clear", ()=>clearCanvas())
     return () => {
       socket.off("draw", ({ x1, y1, x2, y2, color, thickness }) => {
         drawLine(x1, y1, x2, y2, color, thickness);
@@ -88,6 +90,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     lastPos.current = null;
   };
 
+  
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !ctxRef.current || !lastPos.current) return;
@@ -110,7 +113,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
     drawLine(x1, y1, x2, y2, strokeColor, strokeWidth);
 
-    // Emit to server
+
     socket.emit("draw", {
       boardId,
       x1,
@@ -123,9 +126,6 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
     lastPos.current = { x: x2, y: y2 };
   };
-
-
-  // Draw a line on canvas. `col` may be provided for remote draws.
 
   const drawLine = (
     x1: number,
@@ -146,14 +146,11 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     ctx.lineTo(x2, y2);
     ctx.stroke();
     ctx.closePath();
-
-    // Restore local brush color and thickness after remote draw
     ctx.strokeStyle = color;
     ctx.lineWidth = 3;
   };
 
 
-  // Keep canvas context strokeStyle in sync with local `color` state
   useEffect(() => {
     if (ctxRef.current) ctxRef.current.strokeStyle = color;
   }, [color]);
@@ -185,43 +182,57 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     setTextValue("");
     setTool("brush");
   };
-  const handleCanvasColor = () => {
-    if (canvasColor === "white") {
-      setCanvasColor("#393838ff");
-    }
-    else setCanvasColor("white");
-  }
+ const handleCopyLink = () => {
+    const fullLink = window.location.href;
+    console.log("full Link: ", fullLink);
+    navigator.clipboard.writeText(fullLink);
+    toast.success("Board link copied!");
+  };
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    if (!canvas || !ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    socket.emit("clear", {boardId})
+  };
 
   return (
     <div>
-      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-20 flex flex-row items-center gap-3">
-        {/* COLOR PALETTE */}
-        <div className="flex flex-row flex-wrap gap-2 p-2 bg-[#605e5e] rounded-md">
-          {presetColors.map((c) => (
-            <div
-              key={c}
-              onClick={() => setColor(c)}
-              className="w-6 h-6 cursor-pointer rounded-sm"
-              style={{
-                background: c,
-                border: color === c ? "3px solid grey" : "2px solid #555",
-                boxShadow: color === c ? "0 0 8px #87cefa" : "none",
-              }}
-            />
-          ))}
-        </div>
-
-        {/* ICON */}
-        <MdFormatColorFill
-          onClick={handleCanvasColor}
-          className="w-8 h-8 cursor-pointer bg-gray-400 rounded-sm p-[2px]"
-        />
+      {/* <div className="fixed top-5 left-1/2 -translate-x-1/2 z-20 flex flex-row items-center gap-3"> */}
+      <div className="fixed top-20 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white shadow-md rounded-xl px-4 py-2 border border-gray-200 z-30">
+        {presetColors.map((c) => (
+          <div
+            key={c}
+            onClick={() => setColor(c)}
+            className={`w-6 h-6 rounded-full cursor-pointer border flex items-center justify-center${color === c ? "ring-2 ring-blue-400" : ""}`}
+            style={{
+              background: c,
+              border: color === c ? "3px solid grey" : "2px solid #555",
+              boxShadow: color === c ? "0 0 8px #87cefa" : "none",
+            }}
+          />
+        ))}
       </div>
 
-      <div>
+      {/* </div> */}
+
+     
         <Toolbar tool={tool} setTool={setTool}></Toolbar>
-      </div>
-
+        <div className="flex flex-row fixed top-4 right-4 gap-2">
+          <button
+            onClick={clearCanvas}
+            className=" bg-white border border-gray-300  px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
+            Clearboard
+          </button>
+          <button
+            onClick={handleCopyLink}
+            className=" bg-white border border-gray-300  px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
+            <MdContentCopy />
+            Copy link
+          </button>
+        </div>
+      
       {isTyping && textPos && (
         <textarea
           autoFocus

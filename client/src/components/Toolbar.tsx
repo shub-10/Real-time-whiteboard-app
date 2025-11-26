@@ -1,4 +1,4 @@
-import { PiPencilBold, PiEraserBold, PiHighlighterBold, PiTextTBold, PiEyedropperBold } from "react-icons/pi";
+import { PiPencilBold, PiEraserBold, PiHighlighterBold, PiTextTBold } from "react-icons/pi";
 
 interface ToolbarProps {
   tool: string;
@@ -7,22 +7,25 @@ interface ToolbarProps {
 
 const Toolbar: React.FC<ToolbarProps> = ({ tool, setTool }) => {
   const tools = [
-    { id: "brush", icon: <PiPencilBold size={24} />, label: "Brush" },
-    { id: "eraser", icon: <PiEraserBold size={24} />, label: "Eraser" },
-    { id: "highlighter", icon: <PiHighlighterBold size={24} />, label: "Highlighter" },
-    { id: "text", icon: <PiTextTBold size={24} />, label: "Text" },
+    { id: "brush", icon: <PiPencilBold size={22} /> },
+    { id: "eraser", icon: <PiEraserBold size={22} /> },
+    { id: "highlighter", icon: <PiHighlighterBold size={22} /> },
+    { id: "text", icon: <PiTextTBold size={22} /> },
   ];
 
   return (
-    <div style={{position: "fixed",left: 20,top: 100, height:"300px", background: "#1e1e1e",padding: "7px",borderRadius: "10px",display: "flex",flexDirection: "column",gap: "17px",zIndex: 10000,
-      }}
-    >
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 
+      bg-white border border-gray-300  rounded-xl shadow-md  px-3 py-2  z-30 ">
       {tools.map((t) => (
         <div
           key={t.id}
           onClick={() => setTool(t.id)}
-          style={{padding: "5px",borderRadius: "10px",background: tool === t.id ? "#333" : "#1e1e1e",border: tool === t.id ? "2px solid #76b7ff" : "2px solid transparent",cursor: "pointer",color: "white",transition: "0.1s",
-          }}
+          className={` w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer
+            transition duration-150 select-none text-gray-700
+            ${tool === t.id 
+              ? "bg-blue-100 border-2 border-blue-500 shadow-md" 
+              : "bg-white border border-gray-300 hover:bg-gray-100 shadow-sm"}
+          `}
         >
           {t.icon}
         </div>
