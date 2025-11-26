@@ -201,7 +201,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
             <div
               key={c}
               onClick={() => setColor(c)}
-              className="w-5 h-5 cursor-pointer rounded-sm"
+              className="w-6 h-6 cursor-pointer rounded-sm"
               style={{
                 background: c,
                 border: color === c ? "3px solid grey" : "2px solid #555",
@@ -214,7 +214,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
         {/* ICON */}
         <MdFormatColorFill
           onClick={handleCanvasColor}
-          className="w-8 h-8 cursor-pointer bg-gray-300 rounded-sm p-[2px]"
+          className="w-8 h-8 cursor-pointer bg-gray-400 rounded-sm p-[2px]"
         />
       </div>
 

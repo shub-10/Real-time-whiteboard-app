@@ -11,36 +11,17 @@ const Toolbar: React.FC<ToolbarProps> = ({ tool, setTool }) => {
     { id: "eraser", icon: <PiEraserBold size={24} />, label: "Eraser" },
     { id: "highlighter", icon: <PiHighlighterBold size={24} />, label: "Highlighter" },
     { id: "text", icon: <PiTextTBold size={24} />, label: "Text" },
-    { id: "eyedropper", icon: <PiEyedropperBold size={24} />, label: "Pick" }
   ];
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        right: 20,
-        top: 100,
-        background: "#1e1e1e",
-        padding: "10px",
-        borderRadius: "12px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-        zIndex: 10000,
+    <div style={{position: "fixed",left: 20,top: 100, height:"300px", background: "#1e1e1e",padding: "7px",borderRadius: "10px",display: "flex",flexDirection: "column",gap: "17px",zIndex: 10000,
       }}
     >
       {tools.map((t) => (
         <div
           key={t.id}
           onClick={() => setTool(t.id)}
-          style={{
-            padding: "10px",
-            borderRadius: "10px",
-            background: tool === t.id ? "#333" : "#1e1e1e",
-            border: tool === t.id ? "2px solid #76b7ff" : "2px solid transparent",
-            cursor: "pointer",
-            color: "white",
-            transition: "0.1s",
+          style={{padding: "5px",borderRadius: "10px",background: tool === t.id ? "#333" : "#1e1e1e",border: tool === t.id ? "2px solid #76b7ff" : "2px solid transparent",cursor: "pointer",color: "white",transition: "0.1s",
           }}
         >
           {t.icon}
