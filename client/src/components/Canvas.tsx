@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { socket } from "../socket";
 import Toolbar from "./Toolbar";
+import { Link } from 'react-router-dom'
 import { MdFormatColorFill } from "react-icons/md";
 import { MdContentCopy } from "react-icons/md";
 import toast from 'react-hot-toast';
@@ -25,16 +26,25 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
   const [isDrawing, setIsDrawing] = useState(false);
 
-  // Track last mouse positions
   const lastPos = useRef<{ x: number; y: number } | null>(null);
+  function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
 
-  // Setup canvas on mount
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+      x: e.clientX - 2*rect.left,
+      y: e.clientY - 2*rect.top,
+    };
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -55,7 +65,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     socket.on("draw", ({ x1, y1, x2, y2, color, thickness }) => {
       drawLine(x1, y1, x2, y2, color, thickness);
     });
-    socket.on("clear", ()=>clearCanvas())
+    socket.on("clear", () => clearCanvas())
     return () => {
       socket.off("draw", ({ x1, y1, x2, y2, color, thickness }) => {
         drawLine(x1, y1, x2, y2, color, thickness);
@@ -78,19 +88,17 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
   }, [canvasColor])
 
-  // Start drawing
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
-    lastPos.current = { x: e.clientX, y: e.clientY };
+    const pos = getCanvasPos(e);
+    lastPos.current = pos;
   };
 
-  // Stop drawing
   const stopDrawing = () => {
     setIsDrawing(false);
     lastPos.current = null;
   };
 
-  
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !ctxRef.current || !lastPos.current) return;
@@ -108,8 +116,8 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     ctx.lineWidth = strokeWidth;
 
     const { x: x1, y: y1 } = lastPos.current;
-    const x2 = e.clientX;
-    const y2 = e.clientY;
+    const pos = getCanvasPos(e);
+    const { x: x2, y: y2 } = pos;
 
     drawLine(x1, y1, x2, y2, strokeColor, strokeWidth);
 
@@ -157,9 +165,9 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool !== "text") return;
 
+    const pos = getCanvasPos(e);
+    setTextPos(pos);
     setIsTyping(true);
-    setTextValue("");
-    setTextPos({ x: e.clientX, y: e.clientY });
   };
   const finishTyping = () => {
     if (!isTyping || !ctxRef.current || !textPos) return;
@@ -182,85 +190,108 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     setTextValue("");
     setTool("brush");
   };
- const handleCopyLink = () => {
+  const handleCopyLink = () => {
     const fullLink = window.location.href;
     console.log("full Link: ", fullLink);
     navigator.clipboard.writeText(fullLink);
     toast.success("Board link copied!");
   };
+  const exportAsImage = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dataURL = canvas.toDataURL("image/jpeg", 1.0);
+
+    const link = document.createElement("a");
+    link.href = dataURL;
+    link.download = `whiteboard-${Date.now()}.jpg`;
+    link.click();
+  };
+
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    socket.emit("clear", {boardId})
+    socket.emit("clear", { boardId })
   };
 
   return (
-    <div>
-      {/* <div className="fixed top-5 left-1/2 -translate-x-1/2 z-20 flex flex-row items-center gap-3"> */}
-      <div className="fixed top-20 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white shadow-md rounded-xl px-4 py-2 border border-gray-200 z-30">
-        {presetColors.map((c) => (
-          <div
-            key={c}
-            onClick={() => setColor(c)}
-            className={`w-6 h-6 rounded-full cursor-pointer border flex items-center justify-center${color === c ? "ring-2 ring-blue-400" : ""}`}
-            style={{
-              background: c,
-              border: color === c ? "3px solid grey" : "2px solid #555",
-              boxShadow: color === c ? "0 0 8px #87cefa" : "none",
-            }}
-          />
-        ))}
-      </div>
-
-      {/* </div> */}
-
-     
-        <Toolbar tool={tool} setTool={setTool}></Toolbar>
-        <div className="flex flex-row fixed top-4 right-4 gap-2">
+    <div className="fixed w-full h-screen">
+      <div className="flex md:flex-row flex-col md:w-3/4 w-full justify-between items-center mx-auto bg-white shadow-sm p-2 rounded-sm mt-2">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3 bg-white shadow-md rounded-lg px-2 py-1 md:px-4 md:py-2 border border-gray-200 z-30">
+            {presetColors.map((c) => (
+              <div
+                key={c}
+                onClick={() => setColor(c)}
+                className={`w-4 h-4 md:w-7 md:h-7 rounded-full cursor-pointer border flex items-center justify-center${color === c ? "ring-2 ring-blue-400" : ""}`}
+                style={{
+                  background: c,
+                  border: color === c ? "3px solid grey" : "2px solid #555",
+                  boxShadow: color === c ? "0 0 8px #87cefa" : "none",
+                }}
+              />
+            ))}
+          </div>
+          <div>
+            <Toolbar tool={tool} setTool={setTool}></Toolbar>
+          </div>
+        </div>
+        <div className="flex flex-row gap-2 mt-1">
           <button
             onClick={clearCanvas}
-            className=" bg-white border border-gray-300  px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
+            className=" bg-white border border-gray-300 px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
             Clearboard
           </button>
           <button
             onClick={handleCopyLink}
-            className=" bg-white border border-gray-300  px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
+            className=" bg-white border border-gray-300 px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
             <MdContentCopy />
             Copy link
           </button>
+          <Link to='/'>
+            <button
+              className=" bg-red-600 text-white border-none  px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
+              Leave
+            </button>
+          </Link>
         </div>
-      
-      {isTyping && textPos && (
-        <textarea
-          autoFocus
-          value={textValue}
-          onChange={(e) => setTextValue(e.target.value)}
-          onBlur={() => finishTyping()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") finishTyping();
-          }}
-          className="absolutep-[6px]rounded-[4px]outline outline-[2px] outline-[#4aa3ff] bg-white
+      </div>
+      <div className="w-full">
+        {isTyping && textPos && (
+          <textarea
+            autoFocus
+            value={textValue}
+            onChange={(e) => setTextValue(e.target.value)}
+            onBlur={() => finishTyping()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") finishTyping();
+            }}
+            className="absolute p-[6px] rounded-[4px] outline outline-[2px] outline-[#4aa3ff] bg-white
         text-[20px] z-[2000]"
-          style={{
-            top: textPos.y,
-            left: textPos.x,
-            color: color
-          }}
+            style={{
+              top: textPos.y,
+              left: textPos.x,
+              color: color
+            }}
+          />
+        )}
+        <canvas
+          ref={canvasRef}
+          className="w-full h-[calc(100vh-120px)] block"
+          onMouseDown={startDrawing}
+          onMouseUp={stopDrawing}
+          onMouseOut={stopDrawing}
+          onMouseMove={draw}
+          style={{ background: "white" }}
+          onClick={handleCanvasClick}
         />
-      )}
-
-      <canvas
-        ref={canvasRef}
-        onMouseDown={startDrawing}
-        onMouseUp={stopDrawing}
-        onMouseOut={stopDrawing}
-        onMouseMove={draw}
-        style={{ background: "white" }}
-        onClick={handleCanvasClick}
-      />
+      </div>
+      <div className="w-3/4 flex justify-start mx-auto">
+        <button className="border border-gray-400 rounded-lg shadow-sm hover:shadow-md px-2 py-1 md:px-4 md:py-2" onClick={exportAsImage}>Export</button>
+      </div>
     </div>
   );
 };
