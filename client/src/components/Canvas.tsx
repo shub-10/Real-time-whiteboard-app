@@ -2,9 +2,10 @@ import { useRef, useEffect, useState } from "react";
 import { socket } from "../socket";
 import Toolbar from "./Toolbar";
 import { Link } from 'react-router-dom'
-import { MdFormatColorFill } from "react-icons/md";
+// import { MdFormatColorFill } from "react-icons/md";
 import { MdContentCopy } from "react-icons/md";
 import toast from 'react-hot-toast';
+import axios from 'axios';
 interface CanvasProps {
   boardId: string;
 }
@@ -23,7 +24,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   const [canvasColor, setCanvasColor] = useState("white");
   const [color, setColor] = useState<string>("black");
   const [tool, setTool] = useState("brush");
-
+  const [slideno, setSlideNo] = useState(1);
   const [isDrawing, setIsDrawing] = useState(false);
 
   const lastPos = useRef<{ x: number; y: number } | null>(null);
@@ -32,23 +33,23 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
-
     return {
-      x: e.clientX - 2*rect.left,
-      y: e.clientY - 2*rect.top,
+      x: e.clientX,
+      y: e.clientY - rect.top,
     };
   }
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
+    // console.log("this is canvas->",canvas);
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
+    // console.log("this is canvas2 ->",canvas);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
+    // console.log("ctx: ", ctx);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 3;
@@ -65,7 +66,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     socket.on("draw", ({ x1, y1, x2, y2, color, thickness }) => {
       drawLine(x1, y1, x2, y2, color, thickness);
     });
-    socket.on("clear", () => clearCanvas())
+    // socket.on("clear", () => clearCanvas())
     return () => {
       socket.off("draw", ({ x1, y1, x2, y2, color, thickness }) => {
         drawLine(x1, y1, x2, y2, color, thickness);
@@ -73,20 +74,20 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     };
   }, []);
 
-  useEffect(() => {
-    const ctx = ctxRef.current;
-    const canvas = canvasRef.current;
+  // useEffect(() => {
+  //   const ctx = ctxRef.current;
+  //   const canvas = canvasRef.current;
+   
+  //   if (!canvas) return;
 
-    if (!canvas) return;
+  //   canvas.width = window.innerWidth;
+  //   canvas.height = window.innerHeight;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+  //   if (!ctx) return;
+  //   ctx.fillStyle = canvasColor;
+  //   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (!ctx) return;
-    ctx.fillStyle = canvasColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  }, [canvasColor])
+  // }, [canvasColor])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
@@ -104,24 +105,20 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     if (!isDrawing || !ctxRef.current || !lastPos.current) return;
 
     const ctx = ctxRef.current;
-
-    // Apply tool settings
-    let strokeColor = tool === "eraser" ? canvasColor : color;
-    let strokeWidth = tool === "eraser" ? 50 : 3;
+    
+    let strokeColor = (tool === "eraser") ? canvasColor : color;
+    let strokeWidth = (tool === "eraser") ? 50 : 3;
     if (tool === "highlighter") {
       strokeColor = color + "40";
       strokeWidth = 20;
     }
     ctx.strokeStyle = strokeColor;
     ctx.lineWidth = strokeWidth;
-
     const { x: x1, y: y1 } = lastPos.current;
     const pos = getCanvasPos(e);
     const { x: x2, y: y2 } = pos;
-
     drawLine(x1, y1, x2, y2, strokeColor, strokeWidth);
-
-
+    lastPos.current = { x: x2, y: y2 };
     socket.emit("draw", {
       boardId,
       x1,
@@ -132,7 +129,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
       thickness: strokeWidth
     });
 
-    lastPos.current = { x: x2, y: y2 };
+    
   };
 
   const drawLine = (
@@ -144,6 +141,8 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     thickness?: number
   ) => {
     const ctx = ctxRef.current;
+    // console.log("ctx here:", ctx);
+
     if (!ctx) return;
 
     if (col) ctx.strokeStyle = col;
@@ -162,13 +161,16 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   useEffect(() => {
     if (ctxRef.current) ctxRef.current.strokeStyle = color;
   }, [color]);
+
+  // when user slides cursor on the canvas
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (tool !== "text") return;
-
     const pos = getCanvasPos(e);
     setTextPos(pos);
     setIsTyping(true);
   };
+
+  // finish typing 
   const finishTyping = () => {
     if (!isTyping || !ctxRef.current || !textPos) return;
 
@@ -177,7 +179,6 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     ctx.fillStyle = color;
     ctx.fillText(textValue, textPos.x, textPos.y);
 
-    // Emit to server
     socket.emit("text", {
       boardId,
       x: textPos.x,
@@ -198,12 +199,15 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   };
   const exportAsImage = () => {
     const canvas = canvasRef.current;
+    // console.log(canvas);
     if (!canvas) return;
 
     const dataURL = canvas.toDataURL("image/jpeg", 1.0);
+    console.log("dataurl: ", dataURL);
 
     const link = document.createElement("a");
     link.href = dataURL;
+    
     link.download = `whiteboard-${Date.now()}.jpg`;
     link.click();
   };
@@ -217,9 +221,24 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     socket.emit("clear", { boardId })
   };
 
+
+  const handleNewSlide = async()=>{
+      const canvas = canvasRef.current
+      if(!canvas) return;
+      const dataURL = canvas.toDataURL("image/jpeg", 1.0);
+      try {
+        const res =  await axios.post(`http://localhost:3000/api/slides/${boardId}`, {dataURL, slideno});
+        console.log(res.data);
+      } catch (error) {
+        
+      }
+      clearCanvas();
+      setSlideNo(prev => prev+1);
+  }
+
   return (
     <div className="fixed w-full h-screen">
-      <div className="flex md:flex-row flex-col md:w-3/4 w-full justify-between items-center mx-auto bg-white shadow-sm p-2 rounded-sm mt-2">
+      <div className="flex md:flex-row flex-col md:w-3/4 w-full justify-between items-center mx-auto bg-white p-2 rounded-lg mt-2  shadow-md mb-1">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-3 bg-white shadow-md rounded-lg px-2 py-1 md:px-4 md:py-2 border border-gray-200 z-30">
             {presetColors.map((c) => (
@@ -241,9 +260,9 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
         </div>
         <div className="flex flex-row gap-2 mt-1">
           <button
-            onClick={clearCanvas}
+            onClick={handleNewSlide}
             className=" bg-white border border-gray-300 px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
-            Clearboard
+            New Slide +
           </button>
           <button
             onClick={handleCopyLink}
@@ -289,7 +308,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
           onClick={handleCanvasClick}
         />
       </div>
-      <div className="w-3/4 flex justify-start mx-auto">
+      <div className="w-3/4 flex justify-start mx-auto bg-white p-2">
         <button className="border border-gray-400 rounded-lg shadow-sm hover:shadow-md px-2 py-1 md:px-4 md:py-2" onClick={exportAsImage}>Export</button>
       </div>
     </div>
