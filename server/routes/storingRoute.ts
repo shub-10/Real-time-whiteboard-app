@@ -1,7 +1,8 @@
 import express, {Request, Response, Router} from "express"
 import Slide from '../Models/slide';
+import cloudinary from '../config/cloudinary';
 const router = express.Router();
-export const appendInDb = (): Router =>{
+export const backendOperations = (): Router =>{
   router.post("/slides/:boardId", async(req:Request, res:Response)=>{
       try {
         const {dataURL, slideno} = req.body;
@@ -10,15 +11,19 @@ export const appendInDb = (): Router =>{
         if(!dataURL){
           return res.status(400).json({message: "image is required"});
         }
-        const [meta, base64] = dataURL.split(',');
-        const contentType = meta.match(/data:(.*);base64/)?.[1] || "image/png";
-        const buffer = Buffer.from(base64, "base64");
-
+        const result = await cloudinary.uploader.upload(dataURL, {
+          folder:`whiteboard/${boardId}`,
+          quality: "auto",
+          format:"jpg",
+          resource_type:"image"
+        });
+        // console.log(result);
+        const slideNo = slideno;
         const slide = await Slide.create({
           boardId,
-          slideno,
-          image:buffer,
-          contentType
+          slideNo,
+          imageUrl:result.secure_url,
+          publicId:result.public_id
         });
 
         console.log("slide id: ", slide._id);
@@ -27,6 +32,13 @@ export const appendInDb = (): Router =>{
       } catch (error) {
           console.log(error);
       }
+  })
+
+  router.get("/:boardId/getPrevSlides", async(req:Request, res:Response)=>{
+     const boardid = req.params.boardId;
+     const slides = await Slide.find({boardId: boardid});
+     console.log("slides: ", slides);
+     return res.status(200).json({slides});
   })
 
   return router;

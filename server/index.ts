@@ -3,7 +3,7 @@ import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
 import { createServer } from "http";
-import { appendInDb } from './routes/storingRoute.ts';
+import { backendOperations } from './routes/storingRoute.ts';
 import dotenv from 'dotenv';
 dotenv.config();
 import connectDB from './db.ts';
@@ -25,7 +25,7 @@ app.use(cors({
 }));
 const port = process.env.PORT || 3000;
 
-connectDB();
+
 // console.log(process.env.MONGODB_URL);
 io.on('connection', (socket) => {
   console.log(`new user connected with id ${socket.id}`);
@@ -56,8 +56,9 @@ io.on('connection', (socket) => {
 app.get('/', (req: Request, res: Response) => {
   res.json("server is running");
 })
-app.use('/api', appendInDb());
-
-server.listen(port, () => {
+app.use('/api', backendOperations());
+connectDB().then(()=>{
+  server.listen(port, () => {
   console.log(`server running at 🚀: ${port}`)
-})
+  })
+  }).catch(()=>{console.log("DB connection Error")})

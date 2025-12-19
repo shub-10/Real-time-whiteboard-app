@@ -9,6 +9,12 @@ import axios from 'axios';
 interface CanvasProps {
   boardId: string;
 }
+interface Slides {
+  _id: String,
+  boardId: String,
+  slideNo: String,
+  imageUrl: String,
+}
 const presetColors = [
   "#000000", "#ffffff", "#e60000",
   "#e65c00", "#ff9900", "#009933", "#0066cc",
@@ -26,6 +32,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   const [tool, setTool] = useState("brush");
   const [slideno, setSlideNo] = useState(1);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [prevSlides, setPrevSlides] = useState<Slides[]>([])
 
   const lastPos = useRef<{ x: number; y: number } | null>(null);
   function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -74,20 +81,16 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     };
   }, []);
 
-  // useEffect(() => {
-  //   const ctx = ctxRef.current;
-  //   const canvas = canvasRef.current;
-   
-  //   if (!canvas) return;
-
-  //   canvas.width = window.innerWidth;
-  //   canvas.height = window.innerHeight;
-
-  //   if (!ctx) return;
-  //   ctx.fillStyle = canvasColor;
-  //   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // }, [canvasColor])
+  const fetchPrevSlides = async () => {
+    const res = await axios.get(`http://localhost:3000/api/${boardId}/getPrevSlides`)
+    console.log("data: ", res.data.slides);
+    setPrevSlides(res.data.slides);
+    
+  }
+  useEffect(() => {
+    fetchPrevSlides();
+    // console.log("prev slides: ", prevSlides);
+  }, [slideno])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
@@ -105,7 +108,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     if (!isDrawing || !ctxRef.current || !lastPos.current) return;
 
     const ctx = ctxRef.current;
-    
+
     let strokeColor = (tool === "eraser") ? canvasColor : color;
     let strokeWidth = (tool === "eraser") ? 50 : 3;
     if (tool === "highlighter") {
@@ -120,16 +123,12 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     drawLine(x1, y1, x2, y2, strokeColor, strokeWidth);
     lastPos.current = { x: x2, y: y2 };
     socket.emit("draw", {
-      boardId,
-      x1,
-      y1,
-      x2,
-      y2,
+      boardId,x1,y1,x2,y2,
       color: strokeColor,
       thickness: strokeWidth
     });
 
-    
+
   };
 
   const drawLine = (
@@ -207,7 +206,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
     const link = document.createElement("a");
     link.href = dataURL;
-    
+
     link.download = `whiteboard-${Date.now()}.jpg`;
     link.click();
   };
@@ -222,18 +221,29 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   };
 
 
-  const handleNewSlide = async()=>{
-      const canvas = canvasRef.current
-      if(!canvas) return;
-      const dataURL = canvas.toDataURL("image/jpeg", 1.0);
-      try {
-        const res =  await axios.post(`http://localhost:3000/api/slides/${boardId}`, {dataURL, slideno});
-        console.log(res.data);
-      } catch (error) {
-        
-      }
-      clearCanvas();
-      setSlideNo(prev => prev+1);
+  const handleNewSlide = async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if(!ctx) return;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const dataURL = canvas.toDataURL("image/jpeg", 1.0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.putImageData(imageData, 0, 0);
+    ctx.globalCompositeOperation = "source-over";
+
+    try {
+      const res = await axios.post(`http://localhost:3000/api/slides/${boardId}`, { dataURL, slideno });
+      console.log(res.data);
+    } catch (error) {
+
+    }
+    clearCanvas();
+    setSlideNo(prev => prev + 1);
   }
 
   return (
@@ -278,7 +288,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
           </Link>
         </div>
       </div>
-      <div className="w-full">
+      <div className="relative w-full">
         {isTyping && textPos && (
           <textarea
             autoFocus
@@ -297,6 +307,22 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
             }}
           />
         )}
+        
+        {prevSlides?.length > 0 && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-50 rounded-lg shadow-lg bg-white border border-gray-300 p-2 cursor-pointer hover:scale-105 transition">
+           
+            <img
+              src={String(prevSlides[prevSlides.length - 1]?.imageUrl || "")}
+              alt="Previous slide"
+              className="h-28 w-40 object-cover rounded"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='12'>No preview</text></svg>";
+              }}
+            />
+             <p className="text-xs text-gray-500 text-center mb-1">Previous slide</p>
+          </div>
+        )}
         <canvas
           ref={canvasRef}
           className="w-full h-[calc(100vh-120px)] block"
@@ -308,9 +334,9 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
           onClick={handleCanvasClick}
         />
       </div>
-      <div className="w-3/4 flex justify-start mx-auto bg-white p-2">
+      {/* <div className="w-3/4 flex justify-start mx-auto bg-white p-2">
         <button className="border border-gray-400 rounded-lg shadow-sm hover:shadow-md px-2 py-1 md:px-4 md:py-2" onClick={exportAsImage}>Export</button>
-      </div>
+      </div> */}
     </div>
   );
 };
