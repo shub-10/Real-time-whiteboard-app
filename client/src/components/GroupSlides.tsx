@@ -1,3 +1,4 @@
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 interface Slide {
   _id: string,
@@ -7,13 +8,12 @@ interface Slide {
 }
 
 interface GroupSlidesprops {
-  slides: Slide[],
-  boardId: string
+  slides: Slide[]
 }
 
 
 
-const GroupSlides = ({ slides, boardId }: GroupSlidesprops) => {
+const GroupSlides = ({ slides }: GroupSlidesprops) => {
 
   const navigate = useNavigate();
   const handleClick = () => {
@@ -26,11 +26,11 @@ const GroupSlides = ({ slides, boardId }: GroupSlidesprops) => {
           onClick={handleClick}
           className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-100 transition"
         >
-          Back
+          ← Back
         </button>
 
         <h1 className="text-xl md:text-2xl font-semibold text-slate-700">
-          All slides of Board room <span className="text-red-500">{`${boardId}`}</span>
+          All slides
         </h1>
 
         <div className="w-[72px]" />
@@ -40,12 +40,7 @@ const GroupSlides = ({ slides, boardId }: GroupSlidesprops) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {slides.map((slide) => (
             <div
-              key={slide._id} 
-              onClick={()=>{navigate(`/board/${boardId}`, {
-                  state:{
-                    imageurl: slide.imageUrl
-                  }
-              })}}
+              key={slide._id}
               className="group cursor-pointer rounded-xl bg-white shadow-sm hover:shadow-lg transition overflow-hidden border border-slate-200"
             >
               <img

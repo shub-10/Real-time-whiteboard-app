@@ -1,22 +1,20 @@
 import { useRef, useEffect, useState } from "react";
 import { socket } from "../socket";
 import Toolbar from "./Toolbar";
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { PiSlideshowLight } from "react-icons/pi";
+import { Link } from 'react-router-dom'
+// import { MdFormatColorFill } from "react-icons/md";
 import { MdContentCopy } from "react-icons/md";
-import { IoIosMenu } from "react-icons/io";
-import { CiExport } from "react-icons/ci";
-import { IoSunnyOutline } from "react-icons/io5";
-import { IoMoonOutline } from "react-icons/io5";
-import { RxCross2 } from "react-icons/rx";
-import { MdOutlinePersonAddAlt1 } from "react-icons/md";
-
 import toast from 'react-hot-toast';
 import axios from 'axios';
 interface CanvasProps {
   boardId: string;
 }
-
+interface Slides {
+  _id: String,
+  boardId: String,
+  slideNo: String,
+  imageUrl: String,
+}
 const presetColors = [
   "#000000", "#ffffff", "#e60000",
   "#e65c00", "#ff9900", "#009933", "#0066cc",
@@ -24,46 +22,29 @@ const presetColors = [
 ];
 
 const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
-
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [textPos, setTextPos] = useState<{ x: number; y: number } | null>(null);
   const [textValue, setTextValue] = useState("");
+  const [canvasColor, setCanvasColor] = useState("white");
   const [color, setColor] = useState<string>("black");
   const [tool, setTool] = useState("brush");
   const [slideno, setSlideNo] = useState(1);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [fold, setFold] = useState(true);
+  const [prevSlides, setPrevSlides] = useState<Slides[]>([])
+
   const lastPos = useRef<{ x: number; y: number } | null>(null);
-  const [isUploading, setUploading] = useState(false);
-  const [theme, setTheme] = useState<string>("light");
-  const [url, setUrl] = useState("");
-  const [otherPanel, setOtherPanel] = useState(true);
-  const [inviteBlock, setInviteBlock] = useState(false);
-  const [toEmail, setToEmail] = useState<string>("");
-
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  const slideImageUrl = location.state?.imageurl;
-  useEffect(() => {
+  function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!canvas) return { x: 0, y: 0 };
 
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      ctx.fillStyle = "#222222";
-    } else {
-      document.documentElement.classList.remove("dark");
-      ctx.fillStyle = "#ffffff"
-    }
-
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }, [theme]);
-
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX,
+      y: e.clientY - rect.top,
+    };
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -100,20 +81,16 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     };
   }, []);
 
-  useEffect(() => { setUrl(window.location.href) }, [url])
+  const fetchPrevSlides = async () => {
+    const res = await axios.get(`http://localhost:3000/api/${boardId}/getPrevSlides`)
+    console.log("data: ", res.data.slides);
+    setPrevSlides(res.data.slides);
+    
+  }
   useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = slideImageUrl;
-    const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (!canvas || !ctx) return;
-    img.onload = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    };
-  }, [slideImageUrl]);
-
+    fetchPrevSlides();
+    // console.log("prev slides: ", prevSlides);
+  }, [slideno])
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
@@ -121,17 +98,6 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     lastPos.current = pos;
   };
 
-
-  function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: e.clientX,
-      y: e.clientY - rect.top,
-    };
-  }
   const stopDrawing = () => {
     setIsDrawing(false);
     lastPos.current = null;
@@ -143,11 +109,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
     const ctx = ctxRef.current;
 
-    let strokeColor = color;
-    if (tool === "eraser") {
-      if (theme === "dark") strokeColor = "#222222";
-      else strokeColor = "white";
-    }
+    let strokeColor = (tool === "eraser") ? canvasColor : color;
     let strokeWidth = (tool === "eraser") ? 50 : 3;
     if (tool === "highlighter") {
       strokeColor = color + "40";
@@ -161,7 +123,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     drawLine(x1, y1, x2, y2, strokeColor, strokeWidth);
     lastPos.current = { x: x2, y: y2 };
     socket.emit("draw", {
-      boardId, x1, y1, x2, y2,
+      boardId,x1,y1,x2,y2,
       color: strokeColor,
       thickness: strokeWidth
     });
@@ -201,7 +163,6 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
   // when user slides cursor on the canvas
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setFold(true);
     if (tool !== "text") return;
     const pos = getCanvasPos(e);
     setTextPos(pos);
@@ -231,6 +192,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   };
   const handleCopyLink = () => {
     const fullLink = window.location.href;
+    console.log("full Link: ", fullLink);
     navigator.clipboard.writeText(fullLink);
     toast.success("Board link copied!");
   };
@@ -258,102 +220,37 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     socket.emit("clear", { boardId })
   };
 
-  const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> => {
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob!),
-        "image/jpeg", 0.7)
-    });
-  }
+
   const handleNewSlide = async () => {
     const canvas = canvasRef.current
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if(!ctx) return;
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     ctx.globalCompositeOperation = "destination-over";
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const dataURL = await canvasToBlob(canvas);
-    const formData = new FormData();
-
-    formData.append("file", dataURL, "slide.jpg");
-    formData.append("slideno", String(slideno));
+    const dataURL = canvas.toDataURL("image/jpeg", 1.0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.putImageData(imageData, 0, 0);
     ctx.globalCompositeOperation = "source-over";
-    if (isUploading) return;
-    setUploading(true);
-    try {
 
-      const res = await axios.post(`http://localhost:3000/api/slides/${boardId}`, formData);
+    try {
+      const res = await axios.post(`http://localhost:3000/api/slides/${boardId}`, { dataURL, slideno });
       console.log(res.data);
     } catch (error) {
-      console.log("error: ", error);
-    } finally {
-      setUploading(false);
+
     }
     clearCanvas();
     setSlideNo(prev => prev + 1);
   }
-  const showAllSlides = () => {
-    navigate(`/board/${boardId}/slides`);
-  }
-
-  const sendInvite = async()=>{
-    const res = await axios.post("http://localhost:3000/api/boardId/send-invite", {
-      toEmail, url
-    });
-    setInviteBlock(false);
-    toast.success("Invitation sent");
-
-  }
 
   return (
-    <div className="fixed w-full h-screen bg-white dark:bg-[#222222]">
-      {
-        inviteBlock && (<div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40"/>
-
-          <div className="relative w-full max-w-lg bg-white rounded-xl shadow-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-lg font-semibold">Add people</h2>
-              <button
-                className="text-gray-500 hover:text-gray-700"
-                onClick={()=>setInviteBlock(false)}>
-                ✕
-              </button>
-            </div>
-
-            <div className="flex justify-center border-b">
-              <div className="flex items-center gap-2 px-4 py-3 text-blue-600 border-b-2 border-blue-600 font-medium">
-                <span>👤+</span>
-                <span>Invite</span>
-              </div>
-            </div>
-            <div className="px-6 py-4">
-              <input
-                type="email"
-                placeholder="You can enter multiple emails using ; at back"
-                className="w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 py-2" onChange={(e) => {e.preventDefault(); setToEmail(e.target.value)}}
-              />
-            </div>
-            {
-              toEmail?.length> 0 && (
-                <div className="flex justify-end px-6 py-4">
-                  <button className="px-4 py-2 text-white bg-blue-600 rounded-xl " onClick={sendInvite}>Send</button>
-                </div>
-                
-              )
-            }
-          </div>
-        </div>)
-      }
-      <div className="absolute top-6 left-4 cursor-pointer rounded-md  p-2 bg-slate-200 border border-gray-400 " onClick={() => setFold(!fold)} ><IoIosMenu size={20} /></div>
-      <div className="md:w-2/3 flex flex-wrap justify-between items-center mx-auto mt-2 mb-1 bg-white p-2 rounded-lg shadow-md  dark:bg-gray-300" >
+    <div className="fixed w-full h-screen">
+      <div className="flex md:flex-row flex-col md:w-3/4 w-full justify-between items-center mx-auto bg-white p-2 rounded-lg mt-2  shadow-md mb-1">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-3 bg-white shadow-md rounded-lg px-2 py-1 md:px-4 md:py-2 border border-gray-400 z-30 dark:bg-gray-300">
+          <div className="flex items-center gap-3 bg-white shadow-md rounded-lg px-2 py-1 md:px-4 md:py-2 border border-gray-200 z-30">
             {presetColors.map((c) => (
               <div
                 key={c}
@@ -367,13 +264,21 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
               />
             ))}
           </div>
-          <Toolbar tool={tool} setTool={setTool}></Toolbar>
+          <div>
+            <Toolbar tool={tool} setTool={setTool}></Toolbar>
+          </div>
         </div>
         <div className="flex flex-row gap-2 mt-1">
           <button
             onClick={handleNewSlide}
-            className=" bg-white border border-gray-400 px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2 dark:bg-gray-300">
+            className=" bg-white border border-gray-300 px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
             New Slide +
+          </button>
+          <button
+            onClick={handleCopyLink}
+            className=" bg-white border border-gray-300 px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2">
+            <MdContentCopy />
+            Copy link
           </button>
           <Link to='/'>
             <button
@@ -383,7 +288,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
           </Link>
         </div>
       </div>
-      <div className="relative w-full h-[calc(100vh-60px)]">
+      <div className="relative w-full">
         {isTyping && textPos && (
           <textarea
             autoFocus
@@ -402,60 +307,36 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
             }}
           />
         )}
-
-        {
-          !fold && (
-            <div className="absolute w-1/6 h-1/2 top-2 left-2 flex flex-col items-center gap-2 px-2 py-2  border  border-gray-200 shadow-md rounded-xl bg-white dark:bg-[#0f244a1a] dark:text-white dark:border-none " >
-              <button className="w-full flex  items-center gap-3 px-1 py-1 text-md rounded-md dark:hover:bg-gray-600" onClick={showAllSlides}><span ><PiSlideshowLight size={20} /></span>Previous Slides</button>
-              <button className="w-full flex items-center gap-3 px-1 py-1 text-md rounded-md dark:hover:bg-gray-600" onClick={exportAsImage}><span ><CiExport size={20} /></span>Export</button>
-
-              <div className="mt-auto w-full px-1">
-                <hr className="mb-2" />
-                <div className="flex flex-wrap justify-between">
-                  <span className="text-md">Theme</span>
-                  <div className="flex flex-row gap-2 cursor-pointer">
-                    <div className="light p-1 border border-gray-200 rounded-md bg-gray-400 dark:bg-[#222222]" onClick={() => { setTheme("light"); }}>
-                      <IoSunnyOutline size={22} />
-                    </div>
-                    <div className="dark p-1 border border-gray-200 rounded-md dark:bg-gray-400" onClick={() => { setTheme("dark") }}>
-                      <IoMoonOutline size={22} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        }
-
-        {
-          otherPanel && (
-            <div className="otherspanel absolute flex flex-col gap-2 w-1/4 h-1/2 bottom-10 p-5 left-4 bg-white border border-gray-100 rounded-lg shadow-md">
-              <div className="flex justify-between items-center">
-                <p className="text-lg font-semibold text-gray-950">Your meeting's ready</p>
-                <span className="p-4 cursor-pointer" onClick={() => { setOtherPanel(false) }}>< RxCross2 size={22} /></span>
-              </div>
-              <button className="flex flex-row items-center w-1/2 gap-2 bg-blue-600 mt-2 px-5 py-2 rounded-full text-white font-semibold" onClick={()=> setInviteBlock(true)}><span className="md: block"><MdOutlinePersonAddAlt1 size={20} /></span>
-                Add others</button>
-              <p className="font-sm text-gray-700 mt-1 px-1">Or share the below link with others <br />that you want in the meeting </p>
-
-              <div className="w-full flex justify-between items-center bg-gray-200 rounded-md m-auto p-2 ">
-                <p>{url}</p>
-                <MdContentCopy size={20} onClick={handleCopyLink} className="cursor-pointer" />
-              </div>
-            </div>
-          )
-        }
-        <canvas id="whiteboard"
+        
+        {prevSlides?.length > 0 && (
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-50 rounded-lg shadow-lg bg-white border border-gray-300 p-2 cursor-pointer hover:scale-105 transition">
+           
+            <img
+              src={String(prevSlides[prevSlides.length - 1]?.imageUrl || "")}
+              alt="Previous slide"
+              className="h-28 w-40 object-cover rounded"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120'><rect width='100%' height='100%' fill='%23f3f4f6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='12'>No preview</text></svg>";
+              }}
+            />
+             <p className="text-xs text-gray-500 text-center mb-1">Previous slide</p>
+          </div>
+        )}
+        <canvas
           ref={canvasRef}
-          className="w-full h-[calc(100vh-60px)] block bg-white dark:bg-[#222222]"
+          className="w-full h-[calc(100vh-120px)] block"
           onMouseDown={startDrawing}
           onMouseUp={stopDrawing}
           onMouseOut={stopDrawing}
           onMouseMove={draw}
+          style={{ background: "white" }}
           onClick={handleCanvasClick}
         />
       </div>
-
+      {/* <div className="w-3/4 flex justify-start mx-auto bg-white p-2">
+        <button className="border border-gray-400 rounded-lg shadow-sm hover:shadow-md px-2 py-1 md:px-4 md:py-2" onClick={exportAsImage}>Export</button>
+      </div> */}
     </div>
   );
 };

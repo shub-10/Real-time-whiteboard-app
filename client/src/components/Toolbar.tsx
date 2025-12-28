@@ -14,13 +14,13 @@ const Toolbar: React.FC<ToolbarProps> = ({ tool, setTool }) => {
   ];
 
   return (
-    <div className="flex items-center gap-2 
-      bg-white border border-gray-400  rounded-xl shadow-md px-2 py-1 md:px-3 md:py-2 z-30 dark:bg-gray-300">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 
+      bg-white border border-gray-300  rounded-xl shadow-md  px-3 py-2  z-30 ">
       {tools.map((t) => (
         <div
           key={t.id}
           onClick={() => setTool(t.id)}
-          className={`w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-lg cursor-pointer
+          className={` w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer
             transition duration-150 select-none text-gray-700
             ${tool === t.id 
               ? "bg-blue-100 border-2 border-blue-500 shadow-md" 
