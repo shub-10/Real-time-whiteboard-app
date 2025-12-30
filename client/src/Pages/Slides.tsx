@@ -16,7 +16,7 @@ interface Slides {
   const [prevSlides, setPrevSlides] = useState<Slides[]>([])
 
   const fetchPrevSlides = async () => {
-    const res = await axios.get(`http://localhost:3000/api/${boardId}/getPrevSlides`)
+    const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/${boardId}/getPrevSlides`)
     // console.log("data: ", res.data.slides);
     setPrevSlides(res.data.slides);
     

@@ -1,12 +1,11 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import http from 'http';
 import { Server } from 'socket.io';
 import { createServer } from "http";
-import { backendOperations } from './routes/storingRoute.ts';
+import { backendOperations } from './routes/storingRoute';
 import dotenv from 'dotenv';
 dotenv.config();
-import connectDB from './db.ts';
+import connectDB from './db';
 
 const app = express();
 const server = createServer(app);
@@ -57,8 +56,10 @@ app.get('/', (req: Request, res: Response) => {
   res.json("server is running");
 })
 app.use('/api', backendOperations());
-connectDB().then(()=>{
-  server.listen(port, () => {
-  console.log(`server running at 🚀: ${port}`)
-  })
-  }).catch(()=>{console.log("DB connection Error")})
+server.listen(port, () => {
+  console.log(`server running at 🚀: ${port}`);
+});
+
+connectDB()
+  .then(() => console.log("DB connected"))
+  .catch(err => console.error("DB connection error", err));
