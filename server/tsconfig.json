@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",

@@ -287,7 +287,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     setUploading(true);
     try {
 
-      const res = await axios.post(`http://localhost:3000/api/slides/${boardId}`, formData);
+      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/slides/${boardId}`, formData);
       console.log(res.data);
     } catch (error) {
       console.log("error: ", error);
@@ -302,7 +302,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   }
 
   const sendInvite = async()=>{
-    const res = await axios.post("http://localhost:3000/api/boardId/send-invite", {
+    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/boardId/send-invite`, {
       toEmail, url
     });
     setInviteBlock(false);
