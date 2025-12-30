@@ -12,7 +12,7 @@ interface Slides {
 
  const Slides = () => {
 
-  const {boardId} = useParams<{boardId:string}>()
+  const {boardId} = useParams<{boardId:string}>()!
   const [prevSlides, setPrevSlides] = useState<Slides[]>([])
 
   const fetchPrevSlides = async () => {
@@ -21,13 +21,16 @@ interface Slides {
     setPrevSlides(res.data.slides);
     
   }
-  useEffect(() => {
-    fetchPrevSlides();
-    // console.log("prev slides: ", prevSlides);
-  }, []);
+
+  useEffect(()=>{
+    if (boardId) {
+      fetchPrevSlides();
+    }
+  },[boardId]);
+
   return (
     <div>
-      <GroupSlides slides={prevSlides}/>
+      {boardId && <GroupSlides slides={prevSlides} boardId={boardId}/>}
     </div>
   )
 }
