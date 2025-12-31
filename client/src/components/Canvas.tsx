@@ -302,9 +302,15 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   }
 
   const sendInvite = async()=>{
-    const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/boardId/send-invite`, {
-      toEmail, url
-    });
+   try {
+     await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/boardId/send-invite`, {
+       toEmail, url
+     });
+     toast.success("Invitation sent");
+   } catch (error) {
+      toast.error("Failed to send invite");
+   }
+   
     setInviteBlock(false);
     toast.success("Invitation sent");
 
