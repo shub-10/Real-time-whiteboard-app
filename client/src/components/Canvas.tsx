@@ -3,7 +3,6 @@ import { socket } from "../socket";
 import Toolbar from "./Toolbar";
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { PiSlideshowLight } from "react-icons/pi";
-import { MdContentCopy } from "react-icons/md";
 import { IoIosMenu } from "react-icons/io";
 import { CiExport } from "react-icons/ci";
 import { IoSunnyOutline } from "react-icons/io5";
