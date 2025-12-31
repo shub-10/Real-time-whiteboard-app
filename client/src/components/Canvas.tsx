@@ -434,18 +434,18 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
         {
           otherPanel && (
-            <div className="otherspanel absolute flex flex-col gap-2 w-1/4 h-2/3 bottom-10 p-5 left-4 bg-white border border-gray-100 rounded-lg shadow-md">
+            <div className="otherspanel absolute flex flex-col gap-2 w-1/4 h-1/2 bottom-10 p-5 left-4 bg-white border border-gray-100 rounded-lg shadow-md">
               <div className="flex justify-between items-center">
                 <p className="text-lg font-semibold text-gray-950">Your meeting's ready</p>
                 <span className="p-4 cursor-pointer" onClick={() => { setOtherPanel(false) }}>< RxCross2 size={22} /></span>
               </div>
-              <button className="flex flex-row  items-center w-2/3 gap-2 bg-blue-600 mt-2 px-5 py-2 rounded-full text-white font-semibold" onClick={()=> setInviteBlock(true)}><span className="md: block"><MdOutlinePersonAddAlt1 size={20} /></span>
+              <button className="flex flex-row items-center w-1/2 gap-2 bg-blue-600 mt-2 px-5 py-2 rounded-full text-white font-semibold" onClick={()=> setInviteBlock(true)}><span className="md: block"><MdOutlinePersonAddAlt1 size={20} /></span>
                 Add others</button>
               <p className="font-sm text-gray-700 mt-1 px-1">Or share the below link with others <br />that you want in the meeting </p>
 
-              <div className="w-full flex justify-between items-center bg-gray-200 rounded-md m-auto p-2 cursor-pointer" onClick={handleCopyLink}>
+              <div className="w-full flex justify-between items-center bg-gray-200 rounded-md m-auto p-2 ">
                 <p>{url}</p>
-                {/* <MdContentCopy size={25} onClick={handleCopyLink} className="cursor-pointer" /> */}
+                <MdContentCopy size={20} onClick={handleCopyLink} className="cursor-pointer" />
               </div>
             </div>
           )
