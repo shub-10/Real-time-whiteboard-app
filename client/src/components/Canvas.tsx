@@ -68,12 +68,17 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     // console.log("this is canvas->",canvas);
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
+   
 
     // console.log("this is canvas2 ->",canvas);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+     const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = canvas.offsetWidth * dpr;
+    canvas.height = canvas.offsetHeight * dpr;
+
+    ctx.scale(dpr, dpr);
     // console.log("ctx: ", ctx);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -118,30 +123,34 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   }, [slideImageUrl]);
 
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
     setIsDrawing(true);
     const pos = getCanvasPos(e);
     lastPos.current = pos;
   };
 
 
-  function getCanvasPos(e: React.MouseEvent<HTMLCanvasElement>) {
+  function getCanvasPos(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
+   
     return {
-      x: e.clientX,
-      y: e.clientY - rect.top,
+      x: (e.clientX - rect.left),
+      y: (e.clientY - rect.top)
     };
   }
-  const stopDrawing = () => {
+
+  const stopDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
     setIsDrawing(false);
     lastPos.current = null;
   };
 
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !ctxRef.current || !lastPos.current) return;
 
     const ctx = ctxRef.current;
@@ -203,7 +212,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   }, [color]);
 
   // when user slides cursor on the canvas
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasClick = (e: React.PointerEvent<HTMLCanvasElement>) => {
     setFold(true);
     if (tool !== "text") return;
     const pos = getCanvasPos(e);
@@ -470,13 +479,13 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
         )}
 
 
-        <canvas id="whiteboard"
+        <canvas
           ref={canvasRef}
-          className="w-full h-[calc(100vh-60px)] block bg-white dark:bg-[#222222]"
-          onMouseDown={startDrawing}
-          onMouseUp={stopDrawing}
-          onMouseOut={stopDrawing}
-          onMouseMove={draw}
+          className="w-full h-[calc(100vh-60px)] block bg-white dark:bg-[#222222] touch-none"
+          onPointerDown={startDrawing}
+          onPointerMove={draw}
+          onPointerUp={stopDrawing}
+          onPointerLeave={stopDrawing}
           onClick={handleCanvasClick}
         />
       </div>
