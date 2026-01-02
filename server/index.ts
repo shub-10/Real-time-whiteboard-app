@@ -51,6 +51,10 @@ io.on('connection', (socket) => {
   socket.on("disconnect", () => {
     console.log("user disconnected: ", socket.id);
   });
+  socket.on("change-theme", ({theme, boardId})=>{
+    console.log(`boardId : ${boardId} room is changing theme to ${theme}`);
+    socket.to(boardId).emit("change-theme", {theme})
+  });
 })
 app.get('/', (req: Request, res: Response) => {
   res.json("server is running");
@@ -60,6 +64,4 @@ server.listen(port, () => {
   console.log(`server running at 🚀: ${port}`);
 });
 
-connectDB()
-  .then(() => console.log("DB connected"))
-  .catch(err => console.error("DB connection error", err));
+connectDB().catch(err => console.error("DB connection error", err));
