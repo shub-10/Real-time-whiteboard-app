@@ -47,6 +47,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
   const slideImageUrl = location.state?.imageurl;
   useEffect(() => {
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -108,8 +109,11 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     };
   }, []);
 
-  useEffect(() => { setUrl(window.location.href) }, [url])
+  useEffect(() => { setUrl(window.location.href) 
+
+  }, [url])
   useEffect(() => {
+    if (!slideImageUrl) return; 
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = slideImageUrl;
@@ -117,6 +121,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
     img.onload = () => {
+       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
