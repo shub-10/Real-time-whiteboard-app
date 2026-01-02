@@ -63,7 +63,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }, [theme]);
 
-
+  useEffect(() => { setOtherPanel(true) }, []);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -90,6 +90,10 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
     socket.on("draw", ({ x1, y1, x2, y2, color, thickness }) => {
       drawLine(x1, y1, x2, y2, color, thickness);
+    });
+    socket.on("change-theme", ({ theme }) => {
+      // console.log(`theme: ${theme}`)
+      setTheme(theme);
     });
     // socket.on("clear", () => clearCanvas())
     return () => {
@@ -254,7 +258,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     if (!canvas || !ctx) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    socket.emit("clear", { boardId })
+    socket.emit("clear", { boardId });
   };
 
   const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> => {
@@ -300,16 +304,16 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     navigate(`/board/${boardId}/slides`);
   }
 
-  const sendInvite = async()=>{
-   try {
-     await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/boardId/send-invite`, {
-       toEmail, url
-     });
-     toast.success("Invitation sent");
-   } catch (error) {
+  const sendInvite = async () => {
+    try {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/boardId/send-invite`, {
+        toEmail, url
+      });
+      toast.success("Invitation sent");
+    } catch (error) {
       toast.error("Failed to send invite");
-   }
-   
+    }
+
     setInviteBlock(false);
     toast.success("Invitation sent");
 
@@ -319,14 +323,14 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     <div className="fixed w-full h-screen bg-white dark:bg-[#222222]">
       {
         inviteBlock && (<div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40"/>
+          <div className="absolute inset-0 bg-black/40" />
 
           <div className="relative w-full max-w-lg bg-white rounded-xl shadow-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <h2 className="text-lg font-semibold">Add people</h2>
               <button
                 className="text-gray-500 hover:text-gray-700"
-                onClick={()=>setInviteBlock(false)}>
+                onClick={() => setInviteBlock(false)}>
                 ✕
               </button>
             </div>
@@ -341,23 +345,24 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
               <input
                 type="email"
                 placeholder="You can enter multiple emails using ; at back"
-                className="w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 py-2" onChange={(e) => {e.preventDefault(); setToEmail(e.target.value)}}
+                className="w-full border-b border-gray-300 focus:outline-none focus:border-blue-500 py-2" onChange={(e) => { e.preventDefault(); setToEmail(e.target.value) }}
               />
             </div>
             {
-              toEmail?.length> 0 && (
+              toEmail?.length > 0 && (
                 <div className="flex justify-end px-6 py-4">
                   <button className="px-4 py-2 text-white bg-blue-600 rounded-xl " onClick={sendInvite}>Send</button>
                 </div>
-                
+
               )
             }
           </div>
         </div>)
       }
-      <div className="absolute top-6 left-4 cursor-pointer rounded-md  p-2 bg-slate-200 border border-gray-400 " onClick={() => setFold(!fold)} ><IoIosMenu size={20} /></div>
-      <div className="md:w-2/3 flex flex-wrap justify-between items-center mx-auto mt-2 mb-1 bg-white p-2 rounded-lg shadow-md  dark:bg-gray-300" >
-        <div className="flex items-center gap-2">
+      <div className="absolute top-6 left-4 cursor-pointer rounded-md p-2 bg-slate-200 border border-gray-400 " onClick={() => setFold(!fold)} ><IoIosMenu size={20} /></div>
+
+      <div className="md:w-2/3 flex flex-col justify-evenly md:justify-between items-center mx-auto mt-2 mb-1 bg-white p-2 rounded-lg shadow-md  dark:bg-gray-300" >
+        <div className="flex flex-col items-center md:flex-row gap-2">
           <div className="flex items-center gap-3 bg-white shadow-md rounded-lg px-2 py-1 md:px-4 md:py-2 border border-gray-400 z-30 dark:bg-gray-300">
             {presetColors.map((c) => (
               <div
@@ -374,7 +379,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
           </div>
           <Toolbar tool={tool} setTool={setTool}></Toolbar>
         </div>
-        <div className="flex flex-row gap-2 mt-1">
+        <div className="flex flex-row  gap-2 mt-1">
           <button
             onClick={handleNewSlide}
             className=" bg-white border border-gray-400 px-2 py-1 md:px-4 md:py-2 rounded-lg shadow-sm hover:shadow-md transition flex items-center gap-2 dark:bg-gray-300">
@@ -410,7 +415,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
         {
           !fold && (
-            <div className="absolute w-1/6 h-1/2 top-2 left-2 flex flex-col items-center gap-2 px-2 py-2  border  border-gray-200 shadow-md rounded-xl bg-white dark:bg-[#0f244a1a] dark:text-white dark:border-none " >
+            <div className="absolute w-2/3 md:w-1/6 h-1/3 md:h-1/2 top-2 left-2 flex flex-col items-center gap-2 px-2 py-2  border  border-gray-200 shadow-md rounded-xl bg-white dark:bg-[#0f244a1a] dark:text-white dark:border-none " >
               <button className="w-full flex  items-center gap-3 px-1 py-1 text-md rounded-md dark:hover:bg-gray-600" onClick={showAllSlides}><span ><PiSlideshowLight size={20} /></span>Previous Slides</button>
               <button className="w-full flex items-center gap-3 px-1 py-1 text-md rounded-md dark:hover:bg-gray-600" onClick={exportAsImage}><span ><CiExport size={20} /></span>Export</button>
 
@@ -419,10 +424,10 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
                 <div className="flex flex-wrap justify-between">
                   <span className="text-md">Theme</span>
                   <div className="flex flex-row gap-2 cursor-pointer">
-                    <div className="light p-1 border border-gray-200 rounded-md bg-gray-400 dark:bg-[#222222]" onClick={() => { setTheme("light"); }}>
+                    <div className="light p-1 border border-gray-200 rounded-md bg-gray-400 dark:bg-[#222222]" onClick={() => { setTheme("light"); socket.emit("change-theme", { theme: "light", boardId }); }}>
                       <IoSunnyOutline size={22} />
                     </div>
-                    <div className="dark p-1 border border-gray-200 rounded-md dark:bg-gray-400" onClick={() => { setTheme("dark") }}>
+                    <div className="dark p-1 border border-gray-200 rounded-md dark:bg-gray-400" onClick={() => { setTheme("dark"); socket.emit("change-theme", { theme: "dark", boardId }); }}>
                       <IoMoonOutline size={22} />
                     </div>
                   </div>
@@ -432,24 +437,39 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
           )
         }
 
-        {
-          otherPanel && (
-            <div className="otherspanel absolute flex flex-col gap-2 w-1/4 h-1/2 bottom-10 p-5 left-4 bg-white border border-gray-100 rounded-lg shadow-md">
-              <div className="flex justify-between items-center">
-                <p className="text-lg font-semibold text-gray-950">Your meeting's ready</p>
-                <span className="p-4 cursor-pointer" onClick={() => { setOtherPanel(false) }}>< RxCross2 size={22} /></span>
-              </div>
-              <button className="flex flex-row items-center w-1/2 gap-2 bg-blue-600 mt-2 px-5 py-2 rounded-full text-white font-semibold" onClick={()=> setInviteBlock(true)}><span className="md: block"><MdOutlinePersonAddAlt1 size={20} /></span>
-                Add others</button>
-              <p className="font-sm text-gray-700 mt-1 px-1">Or share the below link with others <br />that you want in the meeting </p>
-
-              <div className="w-full flex justify-between items-center bg-gray-200 rounded-md m-auto p-2 ">
-                <p>{url}</p>
-                <MdContentCopy size={20} onClick={handleCopyLink} className="cursor-pointer" />
-              </div>
+        {otherPanel && (
+          <div
+            className="fixed md:absolute inset-x-0 bottom-0 md:inset-auto md:right-4 md:top-1/2 md:-translate-y-1/2 w-full md:w-[360px] lg:w-[400px] max-h-[80vh] bg-white border border-gray rounded-t-xl md:rounded-xl shadow-xl  p-4 md:p-5  flex flex-col gap-3  z-50">
+            <div className="flex justify-between items-center">
+              <p className="text-base md:text-lg font-semibold text-gray-900">
+                Your meeting's ready
+              </p>
+              <button
+                className="p-2 hover:bg-gray-100 rounded-full"
+                onClick={() => setOtherPanel(false)}
+              >
+                <RxCross2 size={20} />
+              </button>
             </div>
-          )
-        }
+
+            <button className=" flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-full text-white text-sm md:text-base font-medium "
+              onClick={() => setInviteBlock(true)}>
+              <MdOutlinePersonAddAlt1 size={20} />
+              Add others
+            </button>
+
+            <p className="text-sm text-gray-700">
+              Or share the below link with others that you want in the meeting
+            </p>
+
+            <div className="w-full flex items-center bg-gray-100 hover:bg-gray-200 rounded-md px-3 py-2 cursor-pointer break-all text-sm"
+              onClick={handleCopyLink} >
+              {url}
+            </div>
+          </div>
+        )}
+
+
         <canvas id="whiteboard"
           ref={canvasRef}
           className="w-full h-[calc(100vh-60px)] block bg-white dark:bg-[#222222]"

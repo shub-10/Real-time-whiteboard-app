@@ -14,8 +14,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ tool, setTool }) => {
   ];
 
   return (
-    <div className="flex items-center gap-2 
-      bg-white border border-gray-400  rounded-xl shadow-md px-2 py-1 md:px-3 md:py-2 z-30 dark:bg-gray-300">
+    <div className="flex items-center gap-2 bg-white border border-gray-400 rounded-xl shadow-md px-2 py-1 md:px-3 md:py-2  z-30 dark:bg-gray-300">
       {tools.map((t) => (
         <div
           key={t.id}
