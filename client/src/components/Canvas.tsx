@@ -26,6 +26,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [textPos, setTextPos] = useState<{ x: number; y: number } | null>(null);
   const [textValue, setTextValue] = useState("");
@@ -41,13 +42,24 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
   const [otherPanel, setOtherPanel] = useState(true);
   const [inviteBlock, setInviteBlock] = useState(false);
   const [toEmail, setToEmail] = useState<string>("");
+  const textFontAscent = useRef<number|null>(0);
+  const TEXT_FONT = "italic 20px system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
 
+  function getTextAscent() {
+    const ctx = ctxRef.current;
+    if (!ctx) return null;
+
+    ctx.font = TEXT_FONT ;
+    const metrics = ctx.measureText("Mg");
+    return metrics.actualBoundingBoxAscent+metrics.actualBoundingBoxDescent;
+  }
+
+  textFontAscent.current = getTextAscent();
   const location = useLocation();
   const navigate = useNavigate();
-
   const slideImageUrl = location.state?.imageurl;
   useEffect(() => {
-    
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -69,27 +81,29 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     // console.log("this is canvas->",canvas);
-   
+
 
     // console.log("this is canvas2 ->",canvas);
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-     const dpr = window.devicePixelRatio || 1;
+    const dpr = window.devicePixelRatio || 1;
 
     canvas.width = canvas.offsetWidth * dpr;
     canvas.height = canvas.offsetHeight * dpr;
 
     ctx.scale(dpr, dpr);
     // console.log("ctx: ", ctx);
+  
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 3;
     ctx.strokeStyle = "black";
     ctxRef.current = ctx;
+
     socket.on("text", (data) => {
       const ctx = ctxRef.current;
       if (!ctx) return;
-      ctx.font = "20px sans-serif";
+      ctx.font = TEXT_FONT
       ctx.fillStyle = data.color;
       ctx.fillText(data.text, data.x, data.y);
     });
@@ -109,11 +123,12 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     };
   }, []);
 
-  useEffect(() => { setUrl(window.location.href) 
+  useEffect(() => {
+    setUrl(window.location.href)
 
   }, [url])
   useEffect(() => {
-    if (!slideImageUrl) return; 
+    if (!slideImageUrl) return;
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = slideImageUrl;
@@ -121,7 +136,6 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     const ctx = ctxRef.current;
     if (!canvas || !ctx) return;
     img.onload = () => {
-       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
@@ -141,9 +155,8 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
-   
     return {
-      x: (e.clientX - rect.left),
+      x: e.clientX,
       y: (e.clientY - rect.top)
     };
   }
@@ -230,9 +243,17 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     if (!isTyping || !ctxRef.current || !textPos) return;
 
     const ctx = ctxRef.current;
-    ctx.font = "20px sans-serif";
+
+    // ctx.textBaseline = "top";
+    ctx.font = TEXT_FONT;
     ctx.fillStyle = color;
-    ctx.fillText(textValue, textPos.x, textPos.y);
+    const lineHeight = 24;
+    const lines = textValue.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], textPos.x, textPos.y + i * lineHeight);
+    }
+
 
     socket.emit("text", {
       boardId,
@@ -332,7 +353,18 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     toast.success("Invitation sent");
 
   }
+  const resizeTextArea = () => {
+    const area = textareaRef.current
+    if (!area) return;
+    area.style.height = "auto";
+    area.style.height = `${area.scrollHeight}px`;
 
+  }
+  useEffect(() => {
+    if (isTyping) {
+      resizeTextArea();
+    }
+  }, [isTyping]);
   return (
     <div className="fixed w-full h-screen bg-white dark:bg-[#222222]">
       {
@@ -375,7 +407,7 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
       }
       <div className="absolute top-6 left-4 cursor-pointer rounded-md p-2 bg-slate-200 border border-gray-400 " onClick={() => setFold(!fold)} ><IoIosMenu size={20} /></div>
 
-      <div className="md:w-2/3 flex flex-col justify-evenly md:justify-between items-center mx-auto mt-2 mb-1 bg-white p-2 rounded-lg shadow-md  dark:bg-gray-300" >
+      <div className="md:w-2/3 flex flex-col justify-evenly md:justify-between items-center mx-auto mt-2 mb-1 bg-white p-2 rounded-lg shadow-md dark:bg-gray-300" >
         <div className="flex flex-col items-center md:flex-row gap-2">
           <div className="flex items-center gap-3 bg-white shadow-md rounded-lg px-2 py-1 md:px-4 md:py-2 border border-gray-400 z-30 dark:bg-gray-300">
             {presetColors.map((c) => (
@@ -410,19 +442,23 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
       <div className="relative w-full h-[calc(100vh-60px)]">
         {isTyping && textPos && (
           <textarea
+            ref={textareaRef}
             autoFocus
             value={textValue}
-            onChange={(e) => setTextValue(e.target.value)}
-            onBlur={() => finishTyping()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") finishTyping();
+            onChange={(e) => {
+              setTextValue(e.target.value)
+              resizeTextArea();
             }}
-            className="absolute p-[6px] rounded-[4px] outline outline-[2px] outline-[#4aa3ff] bg-white
-        text-[20px] z-[2000]"
+            onBlur={() => finishTyping()}
+            // onKeyDown={(e) => {
+            //   if (e.key === "Enter") finishTyping();
+            // }}
+            className="absolute  rounded-[4px] bg-white outline-none  z-[2000] dark:bg-[#222222] overflow-hidden resize-none "
             style={{
-              top: textPos.y,
+              font: TEXT_FONT,
+              top: textPos.y - 20,
               left: textPos.x,
-              color: color
+              color: color,
             }}
           />
         )}
