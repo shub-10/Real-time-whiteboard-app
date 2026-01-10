@@ -353,16 +353,39 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
     toast.success("Invitation sent");
 
   }
-  const resizeTextArea = () => {
+  const resizeTextAreaHeight = () => {
     const area = textareaRef.current
     if (!area) return;
     area.style.height = "auto";
     area.style.height = `${area.scrollHeight}px`;
 
   }
+
+  const resizeTextAreaWidth = ()=>{
+    const text = textareaRef.current;
+    const ctx = ctxRef.current;
+    if(!text || !ctx) return;
+
+    const MIN_WIDTH = 20;
+    const MAX_WIDTH = 800;
+    let max_width = MIN_WIDTH;
+    const lines = text.value.split("\n");
+
+    for(const line of lines){
+      const lw = ctx.measureText(line).width;
+      max_width = Math.max(max_width,lw);
+
+      const width = Math.min(max_width, MAX_WIDTH);
+      text.style.width = `${width}px`;
+    }
+
+
+
+  }
   useEffect(() => {
     if (isTyping) {
-      resizeTextArea();
+      resizeTextAreaHeight();
+      resizeTextAreaWidth();
     }
   }, [isTyping]);
   return (
@@ -447,13 +470,14 @@ const Canvas: React.FC<CanvasProps> = ({ boardId }) => {
             value={textValue}
             onChange={(e) => {
               setTextValue(e.target.value)
-              resizeTextArea();
+              resizeTextAreaHeight();
+              resizeTextAreaWidth();
             }}
             onBlur={() => finishTyping()}
             // onKeyDown={(e) => {
             //   if (e.key === "Enter") finishTyping();
             // }}
-            className="absolute  rounded-[4px] bg-white outline-none  z-[2000] dark:bg-[#222222] overflow-hidden resize-none "
+            className="absolute rounded-[4px] bg-white outline-none  z-[2000] dark:bg-[#222222] overflow-hidden resize-none "
             style={{
               font: TEXT_FONT,
               top: textPos.y - 20,
